@@ -90,7 +90,15 @@ public class CapabilityHooks {
 
         // Entities
         var containerEntities = List.of(
-                EntityType.CHEST_BOAT,
+                EntityType.ACACIA_CHEST_BOAT,
+                EntityType.BIRCH_CHEST_BOAT,
+                EntityType.CHERRY_CHEST_BOAT,
+                EntityType.DARK_OAK_CHEST_BOAT,
+                EntityType.JUNGLE_CHEST_BOAT,
+                EntityType.MANGROVE_CHEST_BOAT,
+                EntityType.OAK_CHEST_BOAT,
+                EntityType.SPRUCE_CHEST_BOAT,
+                EntityType.BAMBOO_CHEST_RAFT,
                 EntityType.CHEST_MINECART,
                 EntityType.HOPPER_MINECART);
         for (var entityType : containerEntities) {
@@ -136,6 +144,32 @@ public class CapabilityHooks {
                 Items.RED_SHULKER_BOX,
                 Items.WHITE_SHULKER_BOX,
                 Items.YELLOW_SHULKER_BOX);
+    }
+
+    public static void registerFallbackVanillaProviders(RegisterCapabilitiesEvent event) {
+        // Entities
+        // Register to all entity types to make sure we support all living entity subclasses.
+        for (EntityType<?> entityType : BuiltInRegistries.ENTITY_TYPE) {
+            event.registerEntity(Capabilities.ItemHandler.ENTITY, entityType, (entity, ctx) -> {
+                if (entity instanceof AbstractHorse horse)
+                    return new InvWrapper(horse.getInventory());
+                else if (entity instanceof LivingEntity livingEntity)
+                    return new CombinedInvWrapper(new EntityHandsInvWrapper(livingEntity), new EntityArmorInvWrapper(livingEntity));
+
+                return null;
+            });
+        }
+
+        // Items
+        for (Item item : BuiltInRegistries.ITEM) {
+            if (item.getClass() == BucketItem.class)
+                event.registerItem(Capabilities.FluidHandler.ITEM, (stack, ctx) -> new FluidBucketWrapper(stack), item);
+        }
+
+        // We want mods to be able to override our milk cap by default
+        if (NeoForgeMod.MILK.isBound()) {
+            event.registerItem(Capabilities.FluidHandler.ITEM, (stack, ctx) -> new FluidBucketWrapper(stack), Items.MILK_BUCKET);
+        }
     }
 
     public static void invalidateCapsOnChunkLoad(ChunkEvent.Load event) {

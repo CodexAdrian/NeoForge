@@ -3,11 +3,11 @@
   "category": "misc",
   "ingredients": [
     {
-      "tag": "c:chests/wooden"
+      "neoforge:ingredient_type": "neoforge:difference",
+      "base": "#c:chests/wooden",
+      "subtracted": "#c:chests/trapped"
     },
-    {
-      "item": "minecraft:minecart"
-    }
+    "minecraft:minecart"
   ],
   "result": {
     "count": 1,

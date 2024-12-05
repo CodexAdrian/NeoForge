@@ -3,11 +3,11 @@
   "category": "redstone",
   "key": {
     "C": {
-      "tag": "c:chests/wooden"
+      "neoforge:ingredient_type": "neoforge:difference",
+      "base": "#c:chests/wooden",
+      "subtracted": "#c:chests/trapped"
     },
-    "I": {
-      "tag": "c:ingots/iron"
-    }
+    "I": "#c:ingots/iron"
   },
   "pattern": [
     "I I",

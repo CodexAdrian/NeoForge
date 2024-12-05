@@ -6,12 +6,15 @@
 package net.neoforged.neoforge.common.util;
 
 import com.mojang.authlib.GameProfile;
+import java.util.OptionalInt;
 import java.util.Set;
+import java.util.function.Consumer;
 import javax.annotation.ParametersAreNonnullByDefault;
 import net.minecraft.network.Connection;
 import net.minecraft.network.DisconnectionDetails;
 import net.minecraft.network.PacketListener;
 import net.minecraft.network.PacketSendListener;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.ChatType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.PlayerChatMessage;
@@ -41,7 +44,6 @@ import net.minecraft.network.protocol.game.ServerboundLockDifficultyPacket;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.network.protocol.game.ServerboundMoveVehiclePacket;
 import net.minecraft.network.protocol.game.ServerboundPaddleBoatPacket;
-import net.minecraft.network.protocol.game.ServerboundPickItemPacket;
 import net.minecraft.network.protocol.game.ServerboundPlaceRecipePacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerAbilitiesPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
@@ -71,8 +73,13 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.network.ServerGamePacketListenerImpl;
 import net.minecraft.stats.Stat;
+import net.minecraft.world.Container;
+import net.minecraft.world.MenuProvider;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.RelativeMovement;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.PositionMoveRotation;
+import net.minecraft.world.entity.Relative;
+import net.minecraft.world.entity.animal.horse.AbstractHorse;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.jetbrains.annotations.Nullable;
@@ -84,18 +91,14 @@ public class FakePlayer extends ServerPlayer {
     public FakePlayer(ServerLevel level, GameProfile name) {
         super(level.getServer(), level, name, ClientInformation.createDefault());
         this.connection = new FakePlayerNetHandler(level.getServer(), this);
+        this.setInvulnerable(true);
     }
 
     @Override
     public void displayClientMessage(Component chatComponent, boolean actionBar) {}
 
     @Override
-    public void awardStat(Stat stat, int amount) {}
-
-    @Override
-    public boolean isInvulnerableTo(DamageSource source) {
-        return true;
-    }
+    public void awardStat(Stat<?> stat, int amount) {}
 
     @Override
     public boolean canHarmPlayer(Player player) {
@@ -112,9 +115,27 @@ public class FakePlayer extends ServerPlayer {
     public void updateOptions(ClientInformation p_301998_) {}
 
     @Override
+    public OptionalInt openMenu(@Nullable MenuProvider p_9033_, @Nullable Consumer<RegistryFriendlyByteBuf> extraDataWriter) {
+        return OptionalInt.empty();
+    }
+
+    @Override
+    public void openHorseInventory(AbstractHorse horse, Container container) {}
+
+    @Override
+    public boolean startRiding(Entity entity, boolean force) {
+        return false;
+    }
+
+    @Override
     @Nullable
     public MinecraftServer getServer() {
         return ServerLifecycleHooks.getCurrentServer();
+    }
+
+    @Override
+    public boolean isFakePlayer() {
+        return true;
     }
 
     @ParametersAreNonnullByDefault
@@ -160,9 +181,6 @@ public class FakePlayer extends ServerPlayer {
 
         @Override
         public void handleSetCommandMinecart(ServerboundSetCommandMinecartPacket packet) {}
-
-        @Override
-        public void handlePickItem(ServerboundPickItemPacket packet) {}
 
         @Override
         public void handleRenameItem(ServerboundRenameItemPacket packet) {}
@@ -279,7 +297,7 @@ public class FakePlayer extends ServerPlayer {
         public void handleLockDifficulty(ServerboundLockDifficultyPacket packet) {}
 
         @Override
-        public void teleport(double x, double y, double z, float yaw, float pitch, Set<RelativeMovement> relativeSet) {}
+        public void teleport(PositionMoveRotation posMoveRot, Set<Relative> relatives) {}
 
         @Override
         public void ackBlockChangesUpTo(int sequence) {}

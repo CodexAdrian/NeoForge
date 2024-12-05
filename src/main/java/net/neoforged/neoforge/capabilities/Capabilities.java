@@ -22,7 +22,6 @@ public final class Capabilities {
         public static final BlockCapability<IEnergyStorage, @Nullable Direction> BLOCK = BlockCapability.createSided(create("energy"), IEnergyStorage.class);
         public static final EntityCapability<IEnergyStorage, @Nullable Direction> ENTITY = EntityCapability.createSided(create("energy"), IEnergyStorage.class);
         public static final ItemCapability<IEnergyStorage, IItemContext> ITEM = ItemCapability.createContextual(create("energy"), IEnergyStorage.class);
-
         private EnergyHandler() {}
     }
 

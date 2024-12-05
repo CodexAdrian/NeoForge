@@ -17,7 +17,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.portal.DimensionTransition;
+import net.minecraft.world.level.portal.TeleportTransition;
 
 /**
  * Fired by {@link PlayerList#respawn(ServerPlayer, boolean)} before the server respawns a player.
@@ -27,32 +27,33 @@ import net.minecraft.world.level.portal.DimensionTransition;
  * This event is only fired on the logical server.
  */
 public class PlayerRespawnPositionEvent extends PlayerEvent {
-    private DimensionTransition dimensionTransition;
-    private final DimensionTransition originalDimensionTransition;
+    private TeleportTransition teleportTransition;
+    private final TeleportTransition originalTeleportTransition;
     private final boolean fromEndFight;
-    private boolean changePlayerSpawnPosition = true;
+    private boolean copyOriginalSpawnPosition;
 
-    public PlayerRespawnPositionEvent(ServerPlayer player, DimensionTransition dimensionTransition, boolean fromEndFight) {
+    public PlayerRespawnPositionEvent(ServerPlayer player, TeleportTransition teleportTransition, boolean fromEndFight) {
         super(player);
-        this.dimensionTransition = dimensionTransition;
-        this.originalDimensionTransition = dimensionTransition;
+        this.teleportTransition = teleportTransition;
+        this.originalTeleportTransition = teleportTransition;
         this.fromEndFight = fromEndFight;
+        this.copyOriginalSpawnPosition = !this.originalTeleportTransition.missingRespawnBlock();
     }
 
     /**
-     * @return The dimension transition for where the player will respawn
+     * @return The teleport transition for where the player will respawn
      */
-    public DimensionTransition getDimensionTransition() {
-        return dimensionTransition;
+    public TeleportTransition getTeleportTransition() {
+        return teleportTransition;
     }
 
     /**
-     * Set the dimension transition for where the player will respawn
+     * Set the teleport transition for where the player will respawn
      * 
-     * @param dimensionTransition The new dimension transition.
+     * @param teleportTransition The new teleport transition.
      */
-    public void setDimensionTransition(DimensionTransition dimensionTransition) {
-        this.dimensionTransition = dimensionTransition;
+    public void setTeleportTransition(TeleportTransition teleportTransition) {
+        this.teleportTransition = teleportTransition;
     }
 
     /**
@@ -65,33 +66,39 @@ public class PlayerRespawnPositionEvent extends PlayerEvent {
                 getEntity().getServer(), "The player is not in a ServerLevel somehow?");
         ServerLevel level = Objects.requireNonNull(
                 server.getLevel(respawnLevelResourceKey), "Level " + respawnLevelResourceKey + " does not exist!");
-        DimensionTransition dt = getDimensionTransition();
-        setDimensionTransition(new DimensionTransition(level, dt.pos(), dt.speed(), dt.yRot(), dt.xRot(), dt.postDimensionTransition()));
+        TeleportTransition dt = getTeleportTransition();
+        setTeleportTransition(new TeleportTransition(level, dt.position(), dt.deltaMovement(), dt.yRot(), dt.xRot(), dt.relatives(), dt.postTeleportTransition()));
     }
 
     /**
-     * @return The dimension transition the server originally intended to respawn the player to.
+     * @return The teleport transition the server originally intended to respawn the player to.
      */
-    public DimensionTransition getOriginalDimensionTransition() {
-        return originalDimensionTransition;
+    public TeleportTransition getOriginalTeleportTransition() {
+        return originalTeleportTransition;
     }
 
     /**
-     * @return Whether the respawn position will be used as the player's spawn position from then on. Defaults to {@code true}.
-     *         {@link PlayerSetSpawnEvent} will be fired if this is {@code true}.
+     * If the respawn position of the original player will be copied to the fresh player via {@link ServerPlayer#copyRespawnPosition(ServerPlayer)}.
+     * <p>
+     * This defaults to true if the {@linkplain #getOriginalTeleportTransition() original teleport transition}
+     * was not {@linkplain TeleportTransition#missingRespawnBlock() missing a respawn block}.
+     * <p>
+     * This has no impact on the selected position for the current respawn, but controls if the player will (for example) retain their bed as their set respawn position.
      */
-    public boolean changePlayerSpawnPosition() {
-        return changePlayerSpawnPosition;
+    public boolean copyOriginalSpawnPosition() {
+        return copyOriginalSpawnPosition;
     }
 
     /**
-     * Set whether the respawn position will be used as the player's spawn position from then on.
-     * Defaults to {@code true}. {@link PlayerSetSpawnEvent} will be fired if this is {@code true}.
+     * Changes if the original player's respawn position will be copied to the fresh player via {@link ServerPlayer#copyRespawnPosition(ServerPlayer)}.
+     * <p>
+     * If you wish to modify the set respawn position of the fresh player (for future respawns, not the current respawn), you can
+     * change the respawn position of the {@linkplain #getEntity() current player} and set this value to true.
      * 
-     * @param changePlayerSpawnPosition Whether to set the player's spawn position.
+     * @see #copyOriginalSpawnPosition()
      */
-    public void setChangePlayerSpawnPosition(boolean changePlayerSpawnPosition) {
-        this.changePlayerSpawnPosition = changePlayerSpawnPosition;
+    public void setCopyOriginalSpawnPosition(boolean copyOriginalSpawnPosition) {
+        this.copyOriginalSpawnPosition = copyOriginalSpawnPosition;
     }
 
     /**

@@ -20,7 +20,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.RedstoneLampBlock;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.common.ToolActions;
+import net.neoforged.neoforge.common.ItemAbilities;
 import net.neoforged.neoforge.event.level.BlockDropsEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
 import net.neoforged.testframework.DynamicTest;
@@ -150,7 +150,7 @@ public class BlockEventTests {
     @TestHolder(description = "Tests if the block modification event is fired")
     public static void blockModificationEvent(final DynamicTest test) {
         test.eventListeners().forge().addListener((final BlockEvent.BlockToolModificationEvent event) -> {
-            if (event.getToolAction() == ToolActions.AXE_STRIP) {
+            if (event.getItemAbility() == ItemAbilities.AXE_STRIP) {
                 if (event.getLevel().getBlockState(event.getContext().getClickedPos()).is(Blocks.ACACIA_LOG)) {
                     event.setCanceled(true);
                 } else if (event.getFinalState().is(Blocks.DIAMOND_BLOCK) && event.getContext().getClickedFace() == Direction.UP) {
@@ -185,15 +185,15 @@ public class BlockEventTests {
         });
 
         test.onGameTest(helper -> helper.startSequence()
-                .thenExecute(() -> helper.setBlock(new BlockPos(1, 2, 0), Blocks.COMPOSTER))
-                .thenExecute(() -> helper.setBlock(new BlockPos(1, 2, 1), Blocks.COMPARATOR))
-                .thenExecute(() -> helper.setBlock(new BlockPos(1, 2, 2), Blocks.REDSTONE_LAMP))
+                .thenExecute(() -> helper.setBlock(new BlockPos(1, 1, 0), Blocks.COMPOSTER))
+                .thenExecute(() -> helper.setBlock(new BlockPos(1, 1, 1), Blocks.COMPARATOR))
+                .thenExecute(() -> helper.setBlock(new BlockPos(1, 1, 2), Blocks.REDSTONE_LAMP))
 
-                .thenExecute(() -> helper.useBlock(new BlockPos(1, 2, 0), helper.makeMockPlayer(), Items.ACACIA_LEAVES.getDefaultInstance()))
-                .thenExecuteAfter(5, () -> helper.assertBlockProperty(new BlockPos(1, 2, 2), RedstoneLampBlock.LIT, false)) // We haven't triggered a neighbour update (yet)
+                .thenExecute(() -> helper.useBlock(new BlockPos(1, 1, 0), helper.makeMockPlayer(), Items.ACACIA_LEAVES.getDefaultInstance()))
+                .thenExecuteAfter(5, () -> helper.assertBlockProperty(new BlockPos(1, 1, 2), RedstoneLampBlock.LIT, false)) // We haven't triggered a neighbour update (yet)
 
-                .thenExecuteAfter(1, () -> helper.getLevel().setBlock(helper.absolutePos(new BlockPos(1, 3, 2)), Blocks.IRON_BLOCK.defaultBlockState(), 11)) // Now we should trigger an update
-                .thenExecuteAfter(5, () -> helper.assertBlockProperty(new BlockPos(1, 2, 2), RedstoneLampBlock.LIT, true))
+                .thenExecuteAfter(1, () -> helper.getLevel().setBlock(helper.absolutePos(new BlockPos(1, 2, 2)), Blocks.IRON_BLOCK.defaultBlockState(), 11)) // Now we should trigger an update
+                .thenExecuteAfter(5, () -> helper.assertBlockProperty(new BlockPos(1, 1, 2), RedstoneLampBlock.LIT, true))
                 .thenSucceed());
     }
 
@@ -211,13 +211,13 @@ public class BlockEventTests {
         });
 
         test.onGameTest(helper -> helper.startSequence()
-                .thenExecute(() -> helper.spawnWithNoFreeWill(EntityType.SHEEP, new BlockPos(0, 5, 1).getCenter()))
-                .thenExecuteAfter(40, () -> helper.assertBlockPresent(Blocks.FARMLAND, new BlockPos(0, 2, 1)))
+                .thenExecute(() -> helper.spawnWithNoFreeWill(EntityType.SHEEP, new BlockPos(0, 4, 1).getCenter()))
+                .thenExecuteAfter(40, () -> helper.assertBlockPresent(Blocks.FARMLAND, new BlockPos(0, 1, 1)))
                 .thenExecute(() -> helper.killAllEntitiesOfClass(Sheep.class))
                 .thenIdle(20)
 
-                .thenExecute(() -> helper.spawnWithNoFreeWill(EntityType.GOAT, new BlockPos(1, 5, 0).getCenter()))
-                .thenExecuteAfter(40, () -> helper.assertBlockPresent(Blocks.DIRT, new BlockPos(1, 2, 0)))
+                .thenExecute(() -> helper.spawnWithNoFreeWill(EntityType.GOAT, new BlockPos(1, 4, 0).getCenter()))
+                .thenExecuteAfter(40, () -> helper.assertBlockPresent(Blocks.DIRT, new BlockPos(1, 1, 0)))
                 .thenExecute(() -> helper.killAllEntitiesOfClass(Goat.class))
                 .thenSucceed());
     }

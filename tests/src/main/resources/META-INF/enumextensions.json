@@ -58,39 +58,18 @@
             "parameters": [ "neotests:test", 1, true, true, 128 ]
         },
         {
+            "enum": "net/minecraft/world/item/ItemUseAnimation",
+            "name": "NEOTESTS_SWING",
+            "constructor": "(ILjava/lang/String;)V",
+            "parameters": [ -1, "neotests:swing" ]
+        },
+        {
             "enum": "net/minecraft/client/model/HumanoidModel$ArmPose",
             "name": "NEOTESTS_SWING",
             "constructor": "(ZLnet/neoforged/neoforge/client/IArmPoseTransformer;)V",
             "parameters": {
                 "class": "net/neoforged/neoforge/oldtest/entity/player/ItemUseAnimationTest$EnumParams",
                 "field": "ARM_POSE_ENUM_PARAMS"
-            }
-        },
-        {
-            "enum": "net/minecraft/client/RecipeBookCategories",
-            "name": "NEOTESTS_TESTING_SEARCH",
-            "constructor": "(Ljava/util/function/Supplier;)V",
-            "parameters": {
-                "class": "net/neoforged/neoforge/oldtest/recipebook/RecipeBookExtensionClientHelper",
-                "field": "CAT_SEARCH_ENUM_PARAMS"
-            }
-        },
-        {
-            "enum": "net/minecraft/client/RecipeBookCategories",
-            "name": "NEOTESTS_TESTING_CAT_1",
-            "constructor": "(Ljava/util/function/Supplier;)V",
-            "parameters": {
-                "class": "net/neoforged/neoforge/oldtest/recipebook/RecipeBookExtensionClientHelper",
-                "field": "CAT_1_ENUM_PARAMS"
-            }
-        },
-        {
-            "enum": "net/minecraft/client/RecipeBookCategories",
-            "name": "NEOTESTS_TESTING_CAT_2",
-            "constructor": "(Ljava/util/function/Supplier;)V",
-            "parameters": {
-                "class": "net/neoforged/neoforge/oldtest/recipebook/RecipeBookExtensionClientHelper",
-                "field": "CAT_2_ENUM_PARAMS"
             }
         },
         {
@@ -106,6 +85,15 @@
             "parameters": {
                 "class": "net/neoforged/neoforge/oldtest/world/RaidEnumTest",
                 "field": "RAIDER_ENUM_PARAMS"
+            }
+        },
+        {
+            "enum": "net/minecraft/client/gui/font/providers/GlyphProviderType",
+            "name": "NEOTESTS_REFERENCE_2",
+            "constructor": "(Ljava/lang/String;Lcom/mojang/serialization/MapCodec;)V",
+            "parameters": {
+                "class": "net/neoforged/neoforge/debug/client/CustomGlyphProviderTypeTest",
+                "field": "REFERENCE_2_PARAMS"
             }
         }
     ]

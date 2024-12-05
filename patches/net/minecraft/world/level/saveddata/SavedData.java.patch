@@ -1,6 +1,6 @@
 --- a/net/minecraft/world/level/saveddata/SavedData.java
 +++ b/net/minecraft/world/level/saveddata/SavedData.java
-@@ -47,7 +_,10 @@
+@@ -33,7 +_,10 @@
      }
  
      public static record Factory<T extends SavedData>(

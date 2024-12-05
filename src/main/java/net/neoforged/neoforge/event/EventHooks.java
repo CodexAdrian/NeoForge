@@ -8,8 +8,9 @@ package net.neoforged.neoforge.event;
 import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.datafixers.util.Either;
-import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenCustomHashSet;
+import com.mojang.serialization.DynamicOps;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
@@ -49,17 +50,16 @@ import net.minecraft.world.Difficulty;
 import net.minecraft.world.DifficultyInstance;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityDimensions;
+import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LightningBolt;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobCategory;
-import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.SpawnGroupData;
 import net.minecraft.world.entity.SpawnPlacements;
@@ -81,14 +81,16 @@ import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.level.BaseSpawner;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.Explosion;
+import net.minecraft.world.level.CustomSpawner;
 import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.NaturalSpawner;
+import net.minecraft.world.level.ServerExplosion;
 import net.minecraft.world.level.ServerLevelAccessor;
 import net.minecraft.world.level.SpawnData;
 import net.minecraft.world.level.biome.MobSpawnSettings;
+import net.minecraft.world.level.block.entity.FuelValues;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.PhantomSpawner;
@@ -96,21 +98,21 @@ import net.minecraft.world.level.levelgen.feature.ConfiguredFeature;
 import net.minecraft.world.level.levelgen.feature.stateproviders.BlockStateProvider;
 import net.minecraft.world.level.levelgen.feature.treedecorators.AlterGroundDecorator;
 import net.minecraft.world.level.levelgen.feature.treedecorators.TreeDecorator;
-import net.minecraft.world.level.portal.DimensionTransition;
 import net.minecraft.world.level.portal.PortalShape;
+import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.level.storage.PlayerDataStorage;
 import net.minecraft.world.level.storage.ServerLevelData;
+import net.minecraft.world.level.storage.loot.LootDataType;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.fml.ModLoader;
-import net.neoforged.neoforge.common.EffectCure;
+import net.neoforged.neoforge.common.ItemAbility;
 import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.common.ToolAction;
 import net.neoforged.neoforge.common.extensions.IFluidStateExtension;
 import net.neoforged.neoforge.common.extensions.IOwnedSpawner;
 import net.neoforged.neoforge.common.util.BlockSnapshot;
-import net.neoforged.neoforge.common.util.MutableHashedLinkedMap;
+import net.neoforged.neoforge.common.util.InsertableLinkedOpenCustomHashSet;
 import net.neoforged.neoforge.event.brewing.PlayerBrewedPotionEvent;
 import net.neoforged.neoforge.event.brewing.PotionBrewEvent;
 import net.neoforged.neoforge.event.enchanting.EnchantmentLevelSetEvent;
@@ -168,6 +170,7 @@ import net.neoforged.neoforge.event.level.ChunkWatchEvent;
 import net.neoforged.neoforge.event.level.ExplosionEvent;
 import net.neoforged.neoforge.event.level.ExplosionKnockbackEvent;
 import net.neoforged.neoforge.event.level.LevelEvent;
+import net.neoforged.neoforge.event.level.ModifyCustomSpawnersEvent;
 import net.neoforged.neoforge.event.level.PistonEvent;
 import net.neoforged.neoforge.event.level.SleepFinishedTimeEvent;
 import net.neoforged.neoforge.event.level.block.CreateFluidSourceEvent;
@@ -220,7 +223,7 @@ public class EventHooks {
      * @see SpawnPlacementCheck
      */
     @ApiStatus.Internal
-    public static boolean checkSpawnPlacements(EntityType<?> entityType, ServerLevelAccessor level, MobSpawnType spawnType, BlockPos pos, RandomSource random, boolean defaultResult) {
+    public static boolean checkSpawnPlacements(EntityType<?> entityType, ServerLevelAccessor level, EntitySpawnReason spawnType, BlockPos pos, RandomSource random, boolean defaultResult) {
         var event = new SpawnPlacementCheck(entityType, level, spawnType, pos, random, defaultResult);
         return NeoForge.EVENT_BUS.post(event).getPlacementCheckResult();
     }
@@ -235,7 +238,7 @@ public class EventHooks {
      * @return True, if the position is valid, as determined by the contract of {@link PositionCheck}.
      * @see PositionCheck
      */
-    public static boolean checkSpawnPosition(Mob mob, ServerLevelAccessor level, MobSpawnType spawnType) {
+    public static boolean checkSpawnPosition(Mob mob, ServerLevelAccessor level, EntitySpawnReason spawnType) {
         var event = new PositionCheck(mob, level, spawnType, null);
         NeoForge.EVENT_BUS.post(event);
         if (event.getResult() == PositionCheck.Result.DEFAULT) {
@@ -247,10 +250,10 @@ public class EventHooks {
     /**
      * Specialized variant of {@link #checkSpawnPosition} for spawners, as they have slightly different checks, and pass through the {@link BaseSpawner} to the event.
      * 
-     * @see #checkSpawnPosition(Mob, ServerLevelAccessor, MobSpawnType)
+     * @see #checkSpawnPosition(Mob, ServerLevelAccessor, EntitySpawnReason)
      * @implNote See in-line comments about custom spawn rules.
      */
-    public static boolean checkSpawnPositionSpawner(Mob mob, ServerLevelAccessor level, MobSpawnType spawnType, SpawnData spawnData, BaseSpawner spawner) {
+    public static boolean checkSpawnPositionSpawner(Mob mob, ServerLevelAccessor level, EntitySpawnReason spawnType, SpawnData spawnData, BaseSpawner spawner) {
         var event = new PositionCheck(mob, level, spawnType, spawner);
         NeoForge.EVENT_BUS.post(event);
         if (event.getResult() == PositionCheck.Result.DEFAULT) {
@@ -274,7 +277,7 @@ public class EventHooks {
      * var zombie = new Zombie(level);
      * zombie.finalizeSpawn(level, difficulty, spawnType, spawnData);
      * level.tryAddFreshEntityWithPassengers(zombie);
-     * if (zombie.isAddedToWorld()) {
+     * if (zombie.isAddedToLevel()) {
      *     // Do stuff with your new zombie
      * }
      * </pre>
@@ -287,7 +290,7 @@ public class EventHooks {
      * var zombie = new Zombie(level);
      * EventHooks.finalizeMobSpawn(zombie, level, difficulty, spawnType, spawnData);
      * level.tryAddFreshEntityWithPassengers(zombie);
-     * if (zombie.isAddedToWorld()) {
+     * if (zombie.isAddedToLevel()) {
      *     // Do stuff with your new zombie
      * }
      * </pre>
@@ -303,7 +306,7 @@ public class EventHooks {
      * @return The SpawnGroupData from the finalize, or null if it was canceled. The return value of this method has no bearing on if the entity will be spawned
      * 
      * @see FinalizeSpawnEvent
-     * @see Mob#finalizeSpawn(ServerLevelAccessor, DifficultyInstance, MobSpawnType, SpawnGroupData)
+     * @see Mob#finalizeSpawn(ServerLevelAccessor, DifficultyInstance, EntitySpawnReason, SpawnGroupData)
      * 
      * @apiNote Callers do not need to check if the entity's spawn was cancelled, as the spawn will be blocked by Forge.
      * 
@@ -311,7 +314,7 @@ public class EventHooks {
      */
     @Nullable
     @SuppressWarnings("deprecation") // Call to deprecated Mob#finalizeSpawn is expected.
-    public static SpawnGroupData finalizeMobSpawn(Mob mob, ServerLevelAccessor level, DifficultyInstance difficulty, MobSpawnType spawnType, @Nullable SpawnGroupData spawnData) {
+    public static SpawnGroupData finalizeMobSpawn(Mob mob, ServerLevelAccessor level, DifficultyInstance difficulty, EntitySpawnReason spawnType, @Nullable SpawnGroupData spawnData) {
         var event = new FinalizeSpawnEvent(mob, level, mob.getX(), mob.getY(), mob.getZ(), difficulty, spawnType, spawnData, null);
         NeoForge.EVENT_BUS.post(event);
 
@@ -338,7 +341,7 @@ public class EventHooks {
      * @param def        If the spawner would normally call finalizeSpawn, regardless of the event
      */
     @SuppressWarnings("deprecation") // Call to deprecated Mob#finalizeSpawn is expected.
-    public static FinalizeSpawnEvent finalizeMobSpawnSpawner(Mob mob, ServerLevelAccessor level, DifficultyInstance difficulty, MobSpawnType spawnType, @Nullable SpawnGroupData spawnData, IOwnedSpawner spawner, boolean def) {
+    public static FinalizeSpawnEvent finalizeMobSpawnSpawner(Mob mob, ServerLevelAccessor level, DifficultyInstance difficulty, EntitySpawnReason spawnType, @Nullable SpawnGroupData spawnData, IOwnedSpawner spawner, boolean def) {
         var event = new FinalizeSpawnEvent(mob, level, mob.getX(), mob.getY(), mob.getZ(), difficulty, spawnType, spawnData, spawner.getOwner());
         NeoForge.EVENT_BUS.post(event);
 
@@ -369,7 +372,7 @@ public class EventHooks {
     /**
      * Fires {@link MobDespawnEvent} and returns true if the default logic should be ignored.
      * 
-     * @param entity The entity being despawned.
+     * @param mob The entity being despawned.
      * @return True if the event result is not {@link MobDespawnEvent.Result#DEFAULT}, and the vanilla logic should be ignored.
      */
     public static boolean checkMobDespawn(Mob mob) {
@@ -385,8 +388,8 @@ public class EventHooks {
         return event.getResult() != MobDespawnEvent.Result.DEFAULT;
     }
 
-    public static int getItemBurnTime(ItemStack itemStack, int burnTime, @Nullable RecipeType<?> recipeType) {
-        FurnaceFuelBurnTimeEvent event = new FurnaceFuelBurnTimeEvent(itemStack, burnTime, recipeType);
+    public static int getItemBurnTime(ItemStack itemStack, int burnTime, @Nullable RecipeType<?> recipeType, FuelValues fuelValues) {
+        FurnaceFuelBurnTimeEvent event = new FurnaceFuelBurnTimeEvent(itemStack, burnTime, recipeType, fuelValues);
         NeoForge.EVENT_BUS.post(event);
         return event.getBurnTime();
     }
@@ -483,8 +486,8 @@ public class EventHooks {
     }
 
     @Nullable
-    public static BlockState onToolUse(BlockState originalState, UseOnContext context, ToolAction toolAction, boolean simulate) {
-        BlockToolModificationEvent event = new BlockToolModificationEvent(originalState, context, toolAction, simulate);
+    public static BlockState onToolUse(BlockState originalState, UseOnContext context, ItemAbility itemAbility, boolean simulate) {
+        BlockToolModificationEvent event = new BlockToolModificationEvent(originalState, context, itemAbility, simulate);
         return NeoForge.EVENT_BUS.post(event).isCanceled() ? null : event.getFinalState();
     }
 
@@ -514,10 +517,9 @@ public class EventHooks {
         return event;
     }
 
-    public static int onItemExpire(ItemEntity entity, ItemStack item) {
-        if (item.isEmpty()) return -1;
-        ItemExpireEvent event = new ItemExpireEvent(entity, (item.isEmpty() ? 6000 : item.getItem().getEntityLifespan(item, entity.level())));
-        if (!NeoForge.EVENT_BUS.post(event).isCanceled()) return -1;
+    public static int onItemExpire(ItemEntity entity) {
+        ItemExpireEvent event = new ItemExpireEvent(entity);
+        NeoForge.EVENT_BUS.post(event);
         return event.getExtraLife();
     }
 
@@ -582,11 +584,11 @@ public class EventHooks {
         NeoForge.EVENT_BUS.post(new PlayerEvent.Clone(player, oldPlayer, wasDeath));
     }
 
-    public static boolean onExplosionStart(Level level, Explosion explosion) {
+    public static boolean onExplosionStart(Level level, ServerExplosion explosion) {
         return NeoForge.EVENT_BUS.post(new ExplosionEvent.Start(level, explosion)).isCanceled();
     }
 
-    public static void onExplosionDetonate(Level level, Explosion explosion, List<Entity> list, double diameter) {
+    public static void onExplosionDetonate(Level level, ServerExplosion explosion, List<Entity> entities, List<BlockPos> blocks) {
         //Filter entities to only those who are effected, to prevent modders from seeing more then will be hurt.
         /* Enable this if we get issues with modders looping to much.
         Iterator<Entity> itr = list.iterator();
@@ -598,7 +600,7 @@ public class EventHooks {
             if (e.isImmuneToExplosions() || dist > 1.0F) itr.remove();
         }
         */
-        NeoForge.EVENT_BUS.post(new ExplosionEvent.Detonate(level, explosion, list));
+        NeoForge.EVENT_BUS.post(new ExplosionEvent.Detonate(level, explosion, entities, blocks));
     }
 
     /**
@@ -611,8 +613,8 @@ public class EventHooks {
      * @param initialVelocity The explosion calculated velocity for the entity
      * @return The new explosion velocity to add to the entity's existing velocity
      */
-    public static Vec3 getExplosionKnockback(Level level, Explosion explosion, Entity entity, Vec3 initialVelocity) {
-        ExplosionKnockbackEvent event = new ExplosionKnockbackEvent(level, explosion, entity, initialVelocity);
+    public static Vec3 getExplosionKnockback(Level level, ServerExplosion explosion, Entity entity, Vec3 initialVelocity, List<BlockPos> blocks) {
+        ExplosionKnockbackEvent event = new ExplosionKnockbackEvent(level, explosion, entity, initialVelocity, blocks);
         NeoForge.EVENT_BUS.post(event);
         return event.getKnockbackVelocity();
     }
@@ -662,10 +664,10 @@ public class EventHooks {
         return NeoForge.EVENT_BUS.post(new CanContinueSleepingEvent(sleeper, problem)).mayContinueSleeping();
     }
 
-    public static InteractionResultHolder<ItemStack> onArrowNock(ItemStack item, Level level, Player player, InteractionHand hand, boolean hasAmmo) {
+    public static InteractionResult onArrowNock(ItemStack item, Level level, Player player, InteractionHand hand, boolean hasAmmo) {
         ArrowNockEvent event = new ArrowNockEvent(player, item, hand, level, hasAmmo);
         if (NeoForge.EVENT_BUS.post(event).isCanceled())
-            return new InteractionResultHolder<ItemStack>(InteractionResult.FAIL, item);
+            return InteractionResult.FAIL;
         return event.getAction();
     }
 
@@ -680,12 +682,18 @@ public class EventHooks {
         return NeoForge.EVENT_BUS.post(new ProjectileImpactEvent(projectile, ray)).isCanceled();
     }
 
+    /**
+     * Fires the {@link LootTableLoadEvent} for non-empty loot tables and returns the table if the event was not
+     * canceled and the table was not set to {@link LootTable#EMPTY} in the event. Otherwise returns {@code null}
+     * which maps to an empty {@link Optional} in {@link LootDataType#deserialize(ResourceLocation, DynamicOps, Object)}
+     */
+    @Nullable
     public static LootTable loadLootTable(ResourceLocation name, LootTable table) {
         if (table == LootTable.EMPTY) // Empty table has a null name, and shouldn't be modified anyway.
-            return table;
+            return null;
         LootTableLoadEvent event = new LootTableLoadEvent(name, table);
-        if (NeoForge.EVENT_BUS.post(event).isCanceled())
-            return LootTable.EMPTY;
+        if (NeoForge.EVENT_BUS.post(event).isCanceled() || event.getTable() == LootTable.EMPTY)
+            return null;
         return event.getTable();
     }
 
@@ -693,7 +701,7 @@ public class EventHooks {
      * Checks if a fluid is allowed to create a fluid source. This fires the {@link CreateFluidSourceEvent}.
      * By default, a fluid can create a source if it returns true to {@link IFluidStateExtension#canConvertToSource(Level, BlockPos)}
      */
-    public static boolean canCreateFluidSource(Level level, BlockPos pos, BlockState state) {
+    public static boolean canCreateFluidSource(ServerLevel level, BlockPos pos, BlockState state) {
         return NeoForge.EVENT_BUS.post(new CreateFluidSourceEvent(level, pos, state)).canConvert();
     }
 
@@ -722,7 +730,7 @@ public class EventHooks {
      * @param entity The entity performing the action, or null if unknown.
      * @return
      */
-    public static boolean canEntityGrief(Level level, @Nullable Entity entity) {
+    public static boolean canEntityGrief(ServerLevel level, @Nullable Entity entity) {
         if (entity == null)
             return level.getGameRules().getBoolean(GameRules.RULE_MOBGRIEFING);
 
@@ -799,14 +807,14 @@ public class EventHooks {
         NeoForge.EVENT_BUS.post(event);
     }
 
-    public static EntityEvent.Size getEntitySizeForge(Entity entity, Pose pose, EntityDimensions size, float eyeHeight) {
-        EntityEvent.Size evt = new EntityEvent.Size(entity, pose, size, eyeHeight);
+    public static EntityEvent.Size getEntitySizeForge(Entity entity, Pose pose, EntityDimensions size) {
+        EntityEvent.Size evt = new EntityEvent.Size(entity, pose, size);
         NeoForge.EVENT_BUS.post(evt);
         return evt;
     }
 
-    public static EntityEvent.Size getEntitySizeForge(Entity entity, Pose pose, EntityDimensions oldSize, EntityDimensions newSize, float newEyeHeight) {
-        EntityEvent.Size evt = new EntityEvent.Size(entity, pose, oldSize, newSize, entity.getEyeHeight(), newEyeHeight);
+    public static EntityEvent.Size getEntitySizeForge(Entity entity, Pose pose, EntityDimensions oldSize, EntityDimensions newSize) {
+        EntityEvent.Size evt = new EntityEvent.Size(entity, pose, oldSize, newSize);
         NeoForge.EVENT_BUS.post(evt);
         return evt;
     }
@@ -844,8 +852,8 @@ public class EventHooks {
         return event;
     }
 
-    public static EntityTeleportEvent.ChorusFruit onChorusFruitTeleport(LivingEntity entity, double targetX, double targetY, double targetZ) {
-        EntityTeleportEvent.ChorusFruit event = new EntityTeleportEvent.ChorusFruit(entity, targetX, targetY, targetZ);
+    public static EntityTeleportEvent.ItemConsumption onItemConsumptionTeleport(LivingEntity entity, ItemStack itemStack, double targetX, double targetY, double targetZ) {
+        EntityTeleportEvent.ItemConsumption event = new EntityTeleportEvent.ItemConsumption(entity, itemStack, targetX, targetY, targetZ);
         NeoForge.EVENT_BUS.post(event);
         return event;
     }
@@ -882,8 +890,8 @@ public class EventHooks {
      * @param fromEndFight    Whether the player is respawning because they jumped through the End return portal
      * @return The event
      */
-    public static PlayerRespawnPositionEvent firePlayerRespawnPositionEvent(ServerPlayer player, DimensionTransition dimensionTransition, boolean fromEndFight) {
-        return NeoForge.EVENT_BUS.post(new PlayerRespawnPositionEvent(player, dimensionTransition, fromEndFight));
+    public static PlayerRespawnPositionEvent firePlayerRespawnPositionEvent(ServerPlayer player, TeleportTransition teleportTransition, boolean fromEndFight) {
+        return NeoForge.EVENT_BUS.post(new PlayerRespawnPositionEvent(player, teleportTransition, fromEndFight));
     }
 
     /**
@@ -900,8 +908,8 @@ public class EventHooks {
         NeoForge.EVENT_BUS.post(new PlayerEvent.ItemCraftedEvent(player, crafted, craftMatrix));
     }
 
-    public static void firePlayerSmeltedEvent(Player player, ItemStack smelted) {
-        NeoForge.EVENT_BUS.post(new PlayerEvent.ItemSmeltedEvent(player, smelted));
+    public static void firePlayerSmeltedEvent(Player player, ItemStack smelted, int amountRemoved) {
+        NeoForge.EVENT_BUS.post(new PlayerEvent.ItemSmeltedEvent(player, smelted, amountRemoved));
     }
 
     /**
@@ -1020,12 +1028,12 @@ public class EventHooks {
         NeoForge.EVENT_BUS.post(new AdvancementProgressEvent(player, progressed, advancementProgress, criterion, progressType));
     }
 
-    public static boolean onEffectRemoved(LivingEntity entity, Holder<MobEffect> effect, @Nullable EffectCure cure) {
-        return NeoForge.EVENT_BUS.post(new MobEffectEvent.Remove(entity, effect, cure)).isCanceled();
+    public static boolean onEffectRemoved(LivingEntity entity, Holder<MobEffect> effect) {
+        return NeoForge.EVENT_BUS.post(new MobEffectEvent.Remove(entity, effect)).isCanceled();
     }
 
-    public static boolean onEffectRemoved(LivingEntity entity, MobEffectInstance effectInstance, @Nullable EffectCure cure) {
-        return NeoForge.EVENT_BUS.post(new MobEffectEvent.Remove(entity, effectInstance, cure)).isCanceled();
+    public static boolean onEffectRemoved(LivingEntity entity, MobEffectInstance effectInstance) {
+        return NeoForge.EVENT_BUS.post(new MobEffectEvent.Remove(entity, effectInstance)).isCanceled();
     }
 
     /**
@@ -1075,34 +1083,31 @@ public class EventHooks {
      */
     @ApiStatus.Internal
     public static void onCreativeModeTabBuildContents(CreativeModeTab tab, ResourceKey<CreativeModeTab> tabKey, CreativeModeTab.DisplayItemsGenerator originalGenerator, CreativeModeTab.ItemDisplayParameters params, CreativeModeTab.Output output) {
-        final var searchDupes = new ObjectLinkedOpenCustomHashSet<ItemStack>(ItemStackLinkedSet.TYPE_AND_TAG);
-        // The ItemStackLinkedSet.TYPE_AND_TAG strategy cannot be used for the MutableHashedLinkedMap due to vanilla
-        // adding multiple identical ItemStacks with different TabVisibility values. The values also cannot be merged
-        // because it does not abide by the intended order. For example, vanilla adds all max enchanted books to the
-        // "ingredient" tab with "parent only" visibility, then also adds all enchanted books again in increasing order
-        // to their max values but with the "search only" visibility. Because the parent-only is added first and then
-        // the search-only entries are added after, the max enchantments would show up first and then the enchantments
-        // in increasing order up to max-1.
-        final var entries = new MutableHashedLinkedMap<ItemStack, CreativeModeTab.TabVisibility>(MutableHashedLinkedMap.BASIC, (stack, tabVisibility) -> {
-            if (!searchDupes.add(stack) && tabVisibility != CreativeModeTab.TabVisibility.SEARCH_TAB_ONLY) {
-                throw new IllegalStateException(
-                        "Accidentally adding the same item stack twice "
-                                + stack.getDisplayName().getString()
-                                + " to a Creative Mode Tab: "
-                                + tab.getDisplayName().getString());
-            }
-            return true;
-        });
+        final var parentEntries = new InsertableLinkedOpenCustomHashSet<ItemStack>(ItemStackLinkedSet.TYPE_AND_TAG);
+        final var searchEntries = new InsertableLinkedOpenCustomHashSet<ItemStack>(ItemStackLinkedSet.TYPE_AND_TAG);
 
         originalGenerator.accept(params, (stack, vis) -> {
             if (stack.getCount() != 1)
                 throw new IllegalArgumentException("The stack count must be 1");
-            entries.put(stack, vis);
-        });
-        ModLoader.postEvent(new BuildCreativeModeTabContentsEvent(tab, tabKey, params, entries));
 
-        for (var entry : entries)
-            output.accept(entry.getKey(), entry.getValue());
+            if (BuildCreativeModeTabContentsEvent.isParentTab(vis)) {
+                parentEntries.add(stack);
+            }
+
+            if (BuildCreativeModeTabContentsEvent.isSearchTab(vis)) {
+                searchEntries.add(stack);
+            }
+        });
+
+        ModLoader.postEvent(new BuildCreativeModeTabContentsEvent(tab, tabKey, params, parentEntries, searchEntries));
+
+        for (var entry : parentEntries) {
+            output.accept(entry, CreativeModeTab.TabVisibility.PARENT_TAB_ONLY);
+        }
+
+        for (var entry : searchEntries) {
+            output.accept(entry, CreativeModeTab.TabVisibility.SEARCH_TAB_ONLY);
+        }
     }
 
     /**
@@ -1116,5 +1121,18 @@ public class EventHooks {
         var event = new MobSplitEvent(parent, children);
         NeoForge.EVENT_BUS.post(event);
         return event;
+    }
+
+    /**
+     * Fires the {@link ModifyCustomSpawnersEvent}. Returns the custom spawners list.
+     * 
+     * @param serverLevel    The server level.
+     * @param customSpawners The original custom spawners.
+     * @return The new custom spawners list.
+     */
+    public static List<CustomSpawner> getCustomSpawners(ServerLevel serverLevel, List<CustomSpawner> customSpawners) {
+        ModifyCustomSpawnersEvent event = new ModifyCustomSpawnersEvent(serverLevel, new ArrayList<>(customSpawners));
+        NeoForge.EVENT_BUS.post(event);
+        return event.getCustomSpawners();
     }
 }
