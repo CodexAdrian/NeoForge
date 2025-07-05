@@ -13,9 +13,22 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.items.wrapper.PlayerMainInvWrapper;
+import net.neoforged.neoforge.transfer.ItemUtil;
+import net.neoforged.neoforge.transfer.ResourceHandlerDeprecationHandling;
+import net.neoforged.neoforge.transfer.ResourceHandlerUtil;
+import net.neoforged.neoforge.transfer.handlers.resources.IResourceHandler;
+import net.neoforged.neoforge.transfer.transaction.TransactionContext;
 import org.jetbrains.annotations.Nullable;
 
+/**
+ * @deprecated Use {@link ItemUtil} instead
+ */
+@Deprecated(since = ResourceHandlerDeprecationHandling.MC_1_21_6, forRemoval = true)
 public class ItemHandlerHelper {
+    /**
+     * @deprecated This is now possible to do directly on the {@link IResourceHandler}. No more util needed
+     */
+    @Deprecated(since = ResourceHandlerDeprecationHandling.MC_1_21_6, forRemoval = true)
     public static ItemStack insertItem(IItemHandler dest, ItemStack stack, boolean simulate) {
         if (dest == null || stack.isEmpty())
             return stack;
@@ -34,7 +47,10 @@ public class ItemHandlerHelper {
      * Inserts the ItemStack into the inventory, filling up already present stacks first.
      * This is equivalent to the behaviour of a player picking up an item.
      * Note: This function stacks items without subtypes with different metadata together.
+     *
+     * @deprecated Use {@link ItemUtil#insertStacking(IResourceHandler, ItemStack, TransactionContext)} instead
      */
+    @Deprecated(since = ResourceHandlerDeprecationHandling.MC_1_21_6, forRemoval = true)
     public static ItemStack insertItemStacked(IItemHandler inventory, ItemStack stack, boolean simulate) {
         if (inventory == null || stack.isEmpty())
             return stack;
@@ -74,7 +90,12 @@ public class ItemHandlerHelper {
         return stack;
     }
 
-    /** giveItemToPlayer without preferred slot */
+    /**
+     * giveItemToPlayer without preferred slot
+     *
+     * @deprecated Use {@link ItemUtil#giveItemToPlayer(Player, ItemStack, TransactionContext)} instead
+     */
+    @Deprecated(since = ResourceHandlerDeprecationHandling.MC_1_21_6, forRemoval = true)
     public static void giveItemToPlayer(Player player, ItemStack stack) {
         giveItemToPlayer(player, stack, -1);
     }
@@ -85,7 +106,9 @@ public class ItemHandlerHelper {
      *
      * @param player The player to give the item to
      * @param stack  The itemstack to insert
+     * @deprecated Use {@link ItemUtil#giveItemToPlayer(Player, ItemStack, int, TransactionContext)} instead
      */
+    @Deprecated(since = ResourceHandlerDeprecationHandling.MC_1_21_6, forRemoval = true)
     public static void giveItemToPlayer(Player player, ItemStack stack, int preferredSlot) {
         if (stack.isEmpty()) return;
 
@@ -122,10 +145,12 @@ public class ItemHandlerHelper {
     /**
      * This method uses the standard vanilla algorithm to calculate a comparator output for how "full" the inventory is.
      * This method is an adaptation of Container#calcRedstoneFromInventory(IInventory).
-     * 
+     *
      * @param inv The inventory handler to test.
      * @return A redstone value in the range [0,15] representing how "full" this inventory is.
+     * @deprecated use {@link ResourceHandlerUtil#getRedstoneSignalStrength(IResourceHandler)} instead and ensuring the passed in handler is not null
      */
+    @Deprecated(since = ResourceHandlerDeprecationHandling.MC_1_21_6, forRemoval = true)
     public static int calcRedstoneFromInventory(@Nullable IItemHandler inv) {
         if (inv == null) {
             return 0;

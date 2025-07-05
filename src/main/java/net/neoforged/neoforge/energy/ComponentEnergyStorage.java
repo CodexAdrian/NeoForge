@@ -8,9 +8,8 @@ package net.neoforged.neoforge.energy;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.capabilities.ICapabilityProvider;
-import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.common.MutableDataComponentHolder;
+import net.neoforged.neoforge.transfer.ResourceHandlerDeprecationHandling;
 
 /**
  * Variant of {@link EnergyStorage} for use with data components.
@@ -18,8 +17,11 @@ import net.neoforged.neoforge.common.MutableDataComponentHolder;
  * The actual data storage is managed by a data component, and all changes will write back to that component.
  * <p>
  * To use this class, register a new {@link DataComponentType} which holds an {@link Integer} for your item.
- * Then reference that component from your {@link ICapabilityProvider} passed to {@link RegisterCapabilitiesEvent#registerItem} to create an instance of this class.
+ * Then reference that component from your {@link net.neoforged.neoforge.capabilities.ICapabilityProvider} passed to {@link net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent#registerItem} to create an instance of this class.
+ *
+ * @deprecated Use {@link net.neoforged.neoforge.transfer.handlers.templates.energy.EnergyBufferComponentHandler EnergyBufferComponentHandler} instead
  */
+@Deprecated(since = ResourceHandlerDeprecationHandling.MC_1_21_6, forRemoval = true)
 public class ComponentEnergyStorage implements IEnergyStorage {
     protected final MutableDataComponentHolder parent;
     protected final DataComponentType<Integer> energyComponent;
@@ -29,7 +31,7 @@ public class ComponentEnergyStorage implements IEnergyStorage {
 
     /**
      * Creates a new ComponentEnergyStorage with a data component as the backing store for the energy value.
-     * 
+     *
      * @param parent          The parent component holder, such as an {@link ItemStack}
      * @param energyComponent The data component referencing the stored energy of the item stack
      * @param capacity        The max capacity of the energy being stored
@@ -46,7 +48,7 @@ public class ComponentEnergyStorage implements IEnergyStorage {
 
     /**
      * Creates a new ItemEnergyStorage with a unified receive / extract rate.
-     * 
+     *
      * @see ComponentEnergyStorage#ItemEnergyStorage(ItemStack, DataComponentType, int, int, int)
      */
     public ComponentEnergyStorage(MutableDataComponentHolder parent, DataComponentType<Integer> energyComponent, int capacity, int maxTransfer) {
@@ -55,7 +57,7 @@ public class ComponentEnergyStorage implements IEnergyStorage {
 
     /**
      * Creates a new ItemEnergyStorage with a transfer rate equivalent to the capacity.
-     * 
+     *
      * @see ComponentEnergyStorage#ItemEnergyStorage(ItemStack, DataComponentType, int, int, int)
      */
     public ComponentEnergyStorage(MutableDataComponentHolder parent, DataComponentType<Integer> energyComponent, int capacity) {
@@ -113,7 +115,7 @@ public class ComponentEnergyStorage implements IEnergyStorage {
 
     /**
      * Writes a new energy value to the data component. Clamps to [0, capacity]
-     * 
+     *
      * @param energy The new energy value
      */
     protected void setEnergy(int energy) {

@@ -12,7 +12,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
 import net.neoforged.neoforge.client.model.item.DynamicFluidContainerModel;
-import net.neoforged.neoforge.fluids.FluidUtil;
+import net.neoforged.neoforge.transfer.FluidUtil;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -27,9 +27,9 @@ public final class FluidContentsTint implements ItemTintSource {
 
     @Override
     public int calculate(ItemStack stack, @Nullable ClientLevel level, @Nullable LivingEntity entity) {
-        return FluidUtil.getFluidContained(stack)
-                .map(fluidStack -> IClientFluidTypeExtensions.of(fluidStack.getFluid()).getTintColor(fluidStack))
-                .orElse(0xFFFFFFFF);
+        var fluidStack = FluidUtil.getFirstFluidStackContained(stack);
+        if (fluidStack.isEmpty()) return 0xFFFFFFFF;
+        return IClientFluidTypeExtensions.of(fluidStack.getFluid()).getTintColor(fluidStack);
     }
 
     @Override

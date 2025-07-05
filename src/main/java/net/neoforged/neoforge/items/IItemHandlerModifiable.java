@@ -6,7 +6,16 @@
 package net.neoforged.neoforge.items;
 
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.transfer.ResourceHandlerDeprecationHandling;
+import net.neoforged.neoforge.transfer.handlers.resources.IIndexModifier;
 
+/**
+ * An item handler that supports direct modification of the contents of the
+ * inventory.
+ *
+ * @deprecated For slots, this is handled by {@link IIndexModifier}
+ */
+@Deprecated(since = ResourceHandlerDeprecationHandling.MC_1_21_6, forRemoval = true)
 public interface IItemHandlerModifiable extends IItemHandler {
     /**
      * Overrides the stack in the given slot. This method is used by the

@@ -1,17 +1,17 @@
 /*
- * Copyright (c) Forge Development LLC and contributors
+ * Copyright (c) NeoForged and contributors
  * SPDX-License-Identifier: LGPL-2.1-only
  */
 
 package net.neoforged.neoforge.fluids;
 
-import net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.transfer.ResourceHandlerDeprecationHandling;
 
 /**
- * This interface represents a Fluid Tank. IT IS NOT REQUIRED but is provided for convenience.
- * You are free to handle Fluids in any way that you wish - this is simply an easy default way.
- * DO NOT ASSUME that these objects are used internally in all cases.
+ * There is no new interface as this was built to support IFluidHandler. IResourceHandler has no such data structure replacement.
  */
+@Deprecated(since = ResourceHandlerDeprecationHandling.MC_1_21_6, forRemoval = true)
 public interface IFluidTank {
     /**
      * @return FluidStack representing the fluid in the tank, null if the tank is empty.
@@ -39,19 +39,19 @@ public interface IFluidTank {
      * @param action   If SIMULATE, the fill will only be simulated.
      * @return Amount of fluid that was accepted (or would be, if simulated) by the tank.
      */
-    int fill(FluidStack resource, FluidAction action);
+    int fill(FluidStack resource, IFluidHandler.FluidAction action);
 
     /**
      * @param maxDrain Maximum amount of fluid to be removed from the container.
      * @param action   If SIMULATE, the drain will only be simulated.
      * @return Amount of fluid that was removed (or would be, if simulated) from the tank.
      */
-    FluidStack drain(int maxDrain, FluidAction action);
+    FluidStack drain(int maxDrain, IFluidHandler.FluidAction action);
 
     /**
      * @param resource Maximum amount of fluid to be removed from the container.
      * @param action   If SIMULATE, the drain will only be simulated.
      * @return FluidStack representing fluid that was removed (or would be, if simulated) from the tank.
      */
-    FluidStack drain(FluidStack resource, FluidAction action);
+    FluidStack drain(FluidStack resource, IFluidHandler.FluidAction action);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Forge Development LLC and contributors
+ * Copyright (c) NeoForged and contributors
  * SPDX-License-Identifier: LGPL-2.1-only
  */
 
@@ -11,23 +11,14 @@ import net.minecraft.core.component.DataComponentType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
-import net.neoforged.neoforge.capabilities.ICapabilityProvider;
-import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.common.MutableDataComponentHolder;
+import net.neoforged.neoforge.transfer.ResourceHandlerDeprecationHandling;
+import net.neoforged.neoforge.transfer.handlers.wrappers.items.ItemContainerContentsResourceHandler;
 
 /**
- * Variant of {@link ItemStackHandler} for use with data components.
- * <p>
- * The actual data storage is managed by a data component, and all changes will write back to that component.
- * <p>
- * To use this class, register a new {@link DataComponentType} which holds an {@link ItemContainerContents} for your item.
- * Then reference that component from your {@link ICapabilityProvider} passed to {@link RegisterCapabilitiesEvent#registerItem} to create an instance of this class.
- * <p>
- * Since data components are immutable, this will not work nicely with vanilla's container methods which expect the stack to be mutable.
- * Use {@link ItemHandlerCopySlot} to get around this issue.
- * 
- * @implNote All functions in this class should attempt to minimize component read/writes to avoid unnecessary churn, noting that the component can never be cached.
+ * @deprecated Replaced by {@link ItemContainerContentsResourceHandler}
  */
+@Deprecated(since = ResourceHandlerDeprecationHandling.MC_1_21_6, forRemoval = true)
 public class ComponentItemHandler implements IItemHandlerModifiable {
     protected final MutableDataComponentHolder parent;
     protected final DataComponentType<ItemContainerContents> component;
@@ -35,7 +26,7 @@ public class ComponentItemHandler implements IItemHandlerModifiable {
 
     /**
      * Creates a new {@link ComponentItemHandler} with target size. If the existing component is smaller than the given size, it will be expanded on write.
-     * 
+     *
      * @param parent    The parent component holder, such as an {@link ItemStack}
      * @param component The data component referencing the stored inventory of the item stack
      * @param size      The number of slots. Must be less than 256 due to limitations of {@link ItemContainerContents}
@@ -147,7 +138,7 @@ public class ComponentItemHandler implements IItemHandlerModifiable {
      * Called from {@link #updateContents} after the stack stored in a slot has been updated.
      * <p>
      * Modifications to the stacks used as parameters here will not write-back to the stored data.
-     * 
+     *
      * @param slot     The slot that changed
      * @param oldStack The old stack that was present in the slot
      * @param newStack The new stack that is now present in the slot
@@ -165,7 +156,7 @@ public class ComponentItemHandler implements IItemHandlerModifiable {
      * Retrieves a copy of a single stack from the underlying data component, returning {@link ItemStack#EMPTY} if the component does not have a slot present.
      * <p>
      * Throws an exception if the slot is out-of-bounds for this capability.
-     * 
+     *
      * @param contents The existing contents from {@link #getContents()}
      * @param slot     The target slot
      * @return A copy of the stack in the target slot
@@ -179,7 +170,7 @@ public class ComponentItemHandler implements IItemHandlerModifiable {
      * Performs a copy and write operation on the underlying data component, changing the stack in the target slot.
      * <p>
      * If the existing component is larger than {@link #getSlots()}, additional slots will <b>not</b> be truncated.
-     * 
+     *
      * @param contents The existing contents from {@link #getContents()}
      * @param stack    The new stack to set to the slot
      * @param slot     The target slot

@@ -8,7 +8,13 @@ package net.neoforged.neoforge.items.wrapper;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.transfer.ResourceHandlerDeprecationHandling;
+import net.neoforged.neoforge.transfer.handlers.wrappers.items.PlayerInventoryWrapper;
 
+/**
+ * @deprecated Not a 1:1 but {@link PlayerInventoryWrapper}
+ */
+@Deprecated(since = ResourceHandlerDeprecationHandling.MC_1_21_6, forRemoval = true)
 public class PlayerArmorInvWrapper extends RangedWrapper {
     private final Inventory inventoryPlayer;
 

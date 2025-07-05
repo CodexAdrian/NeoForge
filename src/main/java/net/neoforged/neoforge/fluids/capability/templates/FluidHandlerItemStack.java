@@ -1,5 +1,5 @@
 /*
- * Copyright (c) Forge Development LLC and contributors
+ * Copyright (c) NeoForged and contributors
  * SPDX-License-Identifier: LGPL-2.1-only
  */
 
@@ -11,16 +11,13 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.SimpleFluidContent;
 import net.neoforged.neoforge.fluids.capability.IFluidHandlerItem;
+import net.neoforged.neoforge.transfer.ResourceHandlerDeprecationHandling;
+import net.neoforged.neoforge.transfer.handlers.templates.fluids.ItemContextFluidHandler;
 
 /**
- * FluidHandlerItemStack is a template capability provider for ItemStacks.
- * Data is stored in a {@link SimpleFluidContent} component.
- *
- * <p>This class allows an ItemStack to contain any partial level of fluid up to its capacity, unlike {@link FluidHandlerItemStackSimple}
- *
- * <p>Additional examples are provided to enable consumable fluid containers (see {@link Consumable}),
- * fluid containers with different empty and full items (see {@link SwapEmpty},
+ * @deprecated Replaced {@link ItemContextFluidHandler}
  */
+@Deprecated(since = ResourceHandlerDeprecationHandling.MC_1_21_6, forRemoval = true)
 public class FluidHandlerItemStack implements IFluidHandlerItem {
     protected final Supplier<DataComponentType<SimpleFluidContent>> componentType;
     protected ItemStack container;

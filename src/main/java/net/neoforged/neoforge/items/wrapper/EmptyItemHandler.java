@@ -8,7 +8,13 @@ package net.neoforged.neoforge.items.wrapper;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.items.IItemHandler;
 import net.neoforged.neoforge.items.IItemHandlerModifiable;
+import net.neoforged.neoforge.transfer.ResourceHandlerDeprecationHandling;
+import net.neoforged.neoforge.transfer.handlers.templates.resources.EmptyResourceHandler;
 
+/**
+ * @deprecated Use {@link EmptyResourceHandler#instance()}
+ */
+@Deprecated(since = ResourceHandlerDeprecationHandling.MC_1_21_6, forRemoval = true)
 public class EmptyItemHandler implements IItemHandlerModifiable {
     public static final IItemHandler INSTANCE = new EmptyItemHandler();
 

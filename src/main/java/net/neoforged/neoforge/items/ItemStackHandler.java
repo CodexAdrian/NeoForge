@@ -12,9 +12,16 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
 import net.neoforged.neoforge.common.util.ValueIOSerializable;
+import net.neoforged.neoforge.transfer.ResourceHandlerDeprecationHandling;
+import net.neoforged.neoforge.transfer.handlers.resources.IResourceHandler;
+import net.neoforged.neoforge.transfer.handlers.templates.items.ItemStackListHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * @deprecated Use {@link ItemStackListHandler} that uses a {@link IResourceHandler}
+ */
+@Deprecated(since = ResourceHandlerDeprecationHandling.MC_1_21_6, forRemoval = true)
 public class ItemStackHandler implements IItemHandler, IItemHandlerModifiable, ValueIOSerializable {
     private static final Logger LOGGER = LoggerFactory.getLogger(ItemStackHandler.class);
 
@@ -158,6 +165,7 @@ public class ItemStackHandler implements IItemHandler, IItemHandlerModifiable, V
                 stacks.set(slot.slot(), slot.stack());
             }
         });
+        //onLoad(); todo not called, was removed before merge
     }
 
     protected void validateSlotIndex(int slot) {
